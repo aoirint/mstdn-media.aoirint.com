@@ -1,0 +1,95 @@
+##
+# Basic Settings
+##
+
+server_tokens off;
+
+##
+# Logging Settings
+##
+
+# https://kakakakakku.hatenablog.com/entry/2019/11/25/134646
+log_format json  escape=json '{'
+	'"time": "$time_iso8601",'
+	'"remote_addr": "$remote_addr",'
+	'"host": "$host",'
+	'"remote_user": "$remote_user",'
+	'"status": "$status",'
+	'"server_protocol": "$server_protocol",'
+	'"request_method": "$request_method",'
+	'"request_uri": "$request_uri",'
+	'"request": "$request",'
+	'"body_bytes_sent": "$body_bytes_sent",'
+	'"request_time": "$request_time",'
+	'"upstream_response_time": "$upstream_response_time",'
+	'"http_referer": "$http_referer", '
+	'"http_user_agent": "$http_user_agent",'
+	'"http_x_forwarded_for": "$http_x_forwarded_for",'
+	'"http_x_forwarded_proto": "$http_x_forwarded_proto",'
+	'"http_cf_connecting_ip": "$http_cf_connecting_ip"'
+'}';
+
+
+proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=CACHE:10m inactive=7d max_size=1g;
+
+##
+# Server Settings
+##
+
+server {
+	server_name _;
+	listen 80 default_server;
+
+	root /var/www/html;
+
+	access_log /var/log/nginx/access.log json;
+	error_log /var/log/nginx/error.log;
+
+	keepalive_timeout 30;
+
+	location = / {
+		index index.html;
+	}
+
+	location / {
+		try_files $uri @s3;
+	}
+
+	set $s3_backend '${S3_BACKEND}';
+
+	location @s3 {
+		limit_except GET {
+			deny all;
+		}
+
+		resolver ${DNS_SERVER};
+		proxy_set_header Host ${S3_HOST};
+		proxy_set_header Connection '';
+		proxy_set_header Authorization '';
+		proxy_hide_header Set-Cookie;
+		proxy_hide_header 'Access-Control-Allow-Origin';
+		proxy_hide_header 'Access-Control-Allow-Methods';
+		proxy_hide_header 'Access-Control-Allow-Headers';
+		proxy_hide_header x-amz-id-2;
+		proxy_hide_header x-amz-request-id;
+		proxy_hide_header x-amz-meta-server-side-encryption;
+		proxy_hide_header x-amz-server-side-encryption;
+		proxy_hide_header x-amz-bucket-region;
+		proxy_hide_header x-amzn-requestid;
+		proxy_ignore_headers Set-Cookie;
+		proxy_pass $s3_backend$uri;
+		proxy_intercept_errors off;
+
+		proxy_cache CACHE;
+		proxy_cache_valid 200 48h;
+		proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+		proxy_cache_lock on;
+
+		expires 1y;
+		add_header Cache-Control public;
+		add_header 'Access-Control-Allow-Origin' '*';
+		add_header X-Cache-Status $upstream_cache_status;
+		add_header X-Content-Type-Options nosniff;
+		add_header Content-Security-Policy "default-src 'none'; form-action 'none'";
+	}
+}

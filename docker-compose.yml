@@ -1,0 +1,32 @@
+services:
+  nginx:
+    image: nginx:latest
+    restart: always
+    volumes:
+      - ./nginx_templates:/etc/nginx/templates
+    ports:
+      - ${NGINX_HOST_PORT:?}:80
+    environment:
+      - NGINX_ENVSUBST_TEMPLATE_SUFFIX=.nginx
+      - DNS_SERVER=${DNS_SERVER:?}
+      - S3_BACKEND=${S3_BACKEND:?}
+      - S3_HOST=${S3_HOST:?}
+    logging:
+      driver: fluentd
+      options:
+        tag: docker.mstdn_media_aoirint_com.nginx.{{.ID}}
+        fluentd-async: "true"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run
+    restart: always
+    depends_on:
+      - nginx
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARED_TUNNEL_TOKEN:?}
+    logging:
+      driver: fluentd
+      options:
+        tag: docker.mstdn_media_aoirint_com.cloudflared.{{.ID}}
+        fluentd-async: "true"
