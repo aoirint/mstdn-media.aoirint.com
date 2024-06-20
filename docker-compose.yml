@@ -11,6 +11,7 @@ services:
       - DNS_SERVER=${DNS_SERVER:?}
       - S3_BACKEND=${S3_BACKEND:?}
       - S3_HOST=${S3_HOST:?}
+      - S3_BUCKET=${S3_BUCKET:?}
     logging:
       driver: fluentd
       options:
