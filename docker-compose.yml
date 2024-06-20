@@ -9,9 +9,8 @@ services:
     environment:
       - NGINX_ENVSUBST_TEMPLATE_SUFFIX=.nginx
       - DNS_SERVER=${DNS_SERVER:?}
-      - S3_BACKEND=${S3_BACKEND:?}
       - S3_HOST=${S3_HOST:?}
-      - S3_BUCKET=${S3_BUCKET:?}
+      - S3_BACKEND=${S3_BACKEND:?}
     logging:
       driver: fluentd
       options:
